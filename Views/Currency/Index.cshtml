@@ -1,0 +1,178 @@
+﻿@model List<CurrencyManagement.Models.Currency>
+
+@{
+    ViewData["Title"] = "Currency Management";
+}
+
+<div class="container mt-4">
+
+    <div class="card shadow">
+
+        <div class="card-header bg-primary text-white">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <h3 class="mb-0">
+                    Currency Management
+                </h3>
+
+                <div>
+
+                    <a asp-action="RefreshAll"
+                       class="btn btn-primary">
+
+                        Refresh All Rates
+
+                    </a>
+
+                    <a asp-action="Create"
+                       class="btn btn-success">
+
+                        Add Currency
+
+                    </a>
+                    <a asp-action="SeedCurrencies"
+                       class="btn btn-warning">
+                        Import Currency Master
+                    </a>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger">
+
+                    @TempData["Error"]
+
+                </div>
+            }
+            <table class="table table-striped table-hover table-bordered align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Current Rate</th>
+                        <th>Previous Rate</th>
+                        <th>Change %</th>
+                        <th>Last Updated</th>
+                        <th>Status</th>
+                        <th width="250">Action</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+
+                            <td>
+                                <strong>@item.Code</strong>
+                            </td>
+
+                            <td>
+                                @item.Name
+                            </td>
+
+                            <td>
+                                @item.CurrentRate
+                            </td>
+
+                            <td>
+                                @item.PreviousRate
+                            </td>
+
+                            <td>
+
+                                @if (item.ChangePercent > 1)
+                                {
+                                    <span class="badge bg-success">
+                                        ▲ @item.ChangePercent.ToString("0.00") %
+                                    </span>
+                                }
+                                else if (item.ChangePercent < -1)
+                                {
+                                    <span class="badge bg-danger">
+                                        ▼ @item.ChangePercent.ToString("0.00") %
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        @item.ChangePercent.ToString("0.00") %
+                                    </span>
+                                }
+
+                            </td>
+
+                            <td>
+
+                                @(item.LastUpdated?.ToString("dd/MM/yyyy HH:mm") ?? "-")
+
+                            </td>
+
+                            <td>
+
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge bg-success">
+                                        Active
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">
+                                        Inactive
+                                    </span>
+                                }
+
+                            </td>
+
+                            <td>
+
+                                <a asp-action="Refresh"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-info btn-sm">
+
+                                    Refresh
+
+                                </a>
+
+                                <a asp-action="Edit"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-warning btn-sm">
+
+                                    Edit
+
+                                </a>
+
+                                <a asp-action="Delete"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-danger btn-sm"
+                                   onclick="return confirm('Delete this currency?');">
+
+                                    Delete
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
