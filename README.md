@@ -74,7 +74,7 @@ This project was built to demonstrate:
 
 <p align="center">
 
-<img src="docs/home.png" width="95%">
+<img src="docs/home.png" width="90%">
 
 </p>
 
