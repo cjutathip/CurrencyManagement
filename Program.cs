@@ -1,15 +1,6 @@
 using CurrencyManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.ConfigureKestrel(options =>
-{
-    var port = Environment.GetEnvironmentVariable("PORT");
-
-    if (!string.IsNullOrEmpty(port))
-    {
-        options.ListenAnyIP(int.Parse(port));
-    }
-});
 
 builder.Services.AddControllersWithViews();
 
