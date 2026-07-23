@@ -9,19 +9,19 @@
     <div class="card shadow">
 
         <div class="card-header bg-success text-white">
-            <h3>Add Currency</h3>
+            <h3 class="mb-0">
+                ➕ Add Currency
+            </h3>
         </div>
 
         <div class="card-body">
 
             <form asp-action="Create" method="post">
 
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger mb-3">
-                </div>
-
                 <div class="mb-3">
-                    <label asp-for="Code" class="form-label"></label>
+
+                    <label asp-for="Code"
+                           class="form-label fw-bold"></label>
 
                     <input asp-for="Code"
                            class="form-control"
@@ -29,10 +29,13 @@
 
                     <span asp-validation-for="Code"
                           class="text-danger"></span>
+
                 </div>
 
                 <div class="mb-3">
-                    <label asp-for="Name" class="form-label"></label>
+
+                    <label asp-for="Name"
+                           class="form-label fw-bold"></label>
 
                     <input asp-for="Name"
                            class="form-control"
@@ -40,28 +43,37 @@
 
                     <span asp-validation-for="Name"
                           class="text-danger"></span>
+
                 </div>
 
-                <div class="form-check mb-3">
+                <div class="form-check mb-4">
 
                     <input asp-for="IsActive"
                            class="form-check-input" />
 
                     <label asp-for="IsActive"
-                           class="form-check-label">
+                           class="form-check-label fw-bold">
                     </label>
 
                 </div>
 
-                <button type="submit"
-                        class="btn btn-success">
-                    Save
-                </button>
+                <div class="d-flex gap-2">
 
-                <a asp-action="Index"
-                   class="btn btn-secondary">
-                    Cancel
-                </a>
+                    <button type="submit"
+                            class="btn btn-success">
+
+                        💾 Save
+
+                    </button>
+
+                    <a asp-action="Index"
+                       class="btn btn-secondary">
+
+                        ↩ Back
+
+                    </a>
+
+                </div>
 
             </form>
 

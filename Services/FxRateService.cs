@@ -164,8 +164,9 @@ namespace CurrencyManagement.Services
                 };
             }
 
-            FrankfurterResponse? latest =
-                await GetRate(currency);
+            FrankfurterResponse? latest = await GetRate(currency);
+            Console.WriteLine($"Latest Date : {latest?.Date}");
+            Console.WriteLine($"Latest Rate : {latest?.Rates[currency]}");
 
             if (latest == null)
                 return null;
@@ -199,7 +200,8 @@ namespace CurrencyManagement.Services
                     {
                         previousRate =
                             history.Rates[date][currency];
-
+                        Console.WriteLine($"Previous Date : {date}");
+                        Console.WriteLine($"Previous Rate : {previousRate}");
                         break;
                     }
                 }
