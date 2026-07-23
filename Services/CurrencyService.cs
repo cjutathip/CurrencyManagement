@@ -1,73 +1,135 @@
 ﻿using CurrencyManagement.Models;
+using Microsoft.Extensions.Configuration;
+
 namespace CurrencyManagement.Services
 {
     public class CurrencyService
     {
+        private readonly IConfiguration _configuration;
         private readonly List<Currency> _currencies = new();
-        public CurrencyService()
+        private int _nextId = 1;
+
+        public CurrencyService(IConfiguration configuration)
         {
-            _currencies.Add(new Currency
-            {
-                Id = 1,
-                Code = "USD",
-                Name = "US Dollar",
-                IsActive = true
-            });
-
-            _currencies.Add(new Currency
-            {
-                Id = 2,
-                Code = "THB",
-                Name = "Thai Baht",
-                IsActive = true
-            });
-
-            _currencies.Add(new Currency
-            {
-                Id = 3,
-                Code = "JPY",
-                Name = "Japanese Yen",
-                IsActive = true
-            });
+            _configuration = configuration;
         }
 
+        // ==========================
+        // Get All
+        // ==========================
         public List<Currency> GetAll()
         {
             return _currencies;
         }
+
+        // ==========================
+        // Get By Id
+        // ==========================
         public Currency? GetById(int id)
         {
-            return _currencies.FirstOrDefault(x => x.Id == id);
+            return _currencies.FirstOrDefault(c => c.Id == id);
         }
+
+        // ==========================
+        // Add
+        // ==========================
         public void Add(Currency currency)
         {
-            currency.Id = _currencies.Max(x => x.Id) + 1;
+            currency.Id = _nextId++;
             _currencies.Add(currency);
         }
+
+        // ==========================
+        // Update
+        // ==========================
         public void Update(Currency currency)
         {
-            var item = GetById(currency.Id);
+            Currency? oldCurrency = GetById(currency.Id);
 
-            if (item == null)
+            if (oldCurrency == null)
                 return;
 
-            item.Code = currency.Code;
-            item.Name = currency.Name;
-            item.IsActive = currency.IsActive;
+            oldCurrency.Code = currency.Code;
+            oldCurrency.Name = currency.Name;
+            oldCurrency.IsActive = currency.IsActive;
         }
+        //===========================
+        public void UpdateRate(    Currency currency,    FxRateResult result)
+        {
+            currency.CurrentRate = result.CurrentRate;
+
+            currency.PreviousRate = result.PreviousRate;
+
+            currency.ChangePercent = result.ChangePercent;
+
+            currency.LastUpdated = result.RateDate;
+        }
+        // ==========================
+        // Delete
+        // ==========================
         public void Delete(int id)
         {
-            var item = GetById(id);
+            Currency? currency = GetById(id);
 
-            if (item != null)
+            if (currency != null)
             {
-                _currencies.Remove(item);
+                _currencies.Remove(currency);
             }
         }
 
+        // ==========================
+        // Check Empty
+        // ==========================
+        public bool IsEmpty()
+        {
+            return !_currencies.Any();
+        }
+
+        // ==========================
+        // Startup Seed
+        // ==========================
+        public async Task StartupSeedAsync(IFxRateService fxRateService)
+        {
+            if (!IsEmpty())
+                return;
+    
+            List<CurrencyApiModel> currencies =
+                await fxRateService.GetCurrencies();
+
+            FrankfurterResponse? latestRates =
+                await fxRateService.GetLatestRates();
+            string[] fundCurrencies =
+            _configuration
+                .GetSection("FundCurrencies")
+                .Get<string[]>() ?? Array.Empty<string>();
+            foreach (CurrencyApiModel item in currencies)
+            {
+                if (!fundCurrencies.Contains(item.Code))
+                    continue;
+
+                decimal currentRate = 0;
+
+                if (item.Code == "THB")
+                {
+                    currentRate = 1;
+                }
+                else if (latestRates != null &&
+                         latestRates.Rates.TryGetValue(item.Code, out decimal rate))
+                {
+                    currentRate = rate;
+                }
+
+                Add(new Currency
+                {
+                    Code = item.Code,
+                    Name = item.Name,
+                    CurrentRate = currentRate,
+                    PreviousRate = currentRate,
+                    ChangePercent = 0,
+                    LastUpdated = DateTime.Now,
+                    IsActive = true
+                });
+            }
+        }
     }
-
-
-
-
 }

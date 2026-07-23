@@ -6,9 +6,9 @@ namespace CurrencyManagement.Controllers
 {
     public class ConverterController : Controller
     {
-        private readonly FxRateService _fxRateService;
+        private readonly IFxRateService _fxRateService;
 
-        public ConverterController(FxRateService fxRateService)
+        public ConverterController(IFxRateService fxRateService)
         {
             _fxRateService = fxRateService;
         }

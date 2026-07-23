@@ -9,7 +9,53 @@
     <div class="card shadow">
 
         <div class="card-header bg-primary text-white">
+            <form asp-action="Index" method="get" class="row g-2 mb-3">
 
+                <div class="col-md-4">
+                    <input type="text"
+                           name="search"
+                           value="@ViewBag.Search"
+                           class="form-control"
+                           placeholder="Search by Code or Name" />
+                </div>
+
+                <div class="col-md-3">
+                    <select name="isActive" class="form-select">
+                        <option value="">All Status</option>
+
+                        @if (ViewBag.IsActive != null && (bool)ViewBag.IsActive)
+                        {
+                            <option value="true" selected>Active</option>
+                        }
+                        else
+                        {
+                            <option value="true">Active</option>
+                        }
+
+                        @if (ViewBag.IsActive != null && !(bool)ViewBag.IsActive)
+                        {
+                            <option value="false" selected>Inactive</option>
+                        }
+                        else
+                        {
+                            <option value="false">Inactive</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        Search
+                    </button>
+                </div>
+
+                <div class="col-md-2">
+                    <a asp-action="Index" class="btn btn-secondary w-100">
+                        Clear
+                    </a>
+                </div>
+
+            </form>
             <div class="d-flex justify-content-between align-items-center">
 
                 <h3 class="mb-0">
@@ -31,10 +77,7 @@
                         Add Currency
 
                     </a>
-                    <a asp-action="SeedCurrencies"
-                       class="btn btn-warning">
-                        Import Currency Master
-                    </a>
+
                 </div>
 
             </div>
@@ -71,7 +114,20 @@
 
                     @foreach (var item in Model)
                     {
-                        <tr>
+                       string rowClass = "";
+
+                        if (item.ChangePercent > 1)
+                        {
+                            rowClass = "table-warning";
+                        }
+                        else if (item.ChangePercent < -1)
+                        {
+                            rowClass = "table-danger";
+                        }
+
+                   
+
+                        <tr class="@rowClass">
 
                             <td>
                                 <strong>@item.Code</strong>

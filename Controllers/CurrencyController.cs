@@ -7,11 +7,11 @@ namespace CurrencyManagement.Controllers
     public class CurrencyController : Controller
     {
         private readonly CurrencyService _service;
-        private readonly FxRateService _fxRateService;
+        private readonly IFxRateService _fxRateService;
 
         public CurrencyController(
-            CurrencyService service,
-            FxRateService fxRateService)
+    CurrencyService service,
+    IFxRateService fxRateService)
         {
             _service = service;
             _fxRateService = fxRateService;
@@ -20,11 +20,40 @@ namespace CurrencyManagement.Controllers
         // ==========================
         // Index
         // ==========================
-        public IActionResult Index()
+        //public IActionResult Index()
+        //{
+        //    return View(_service.GetAll());
+        //}
+        // ==========================
+        // Index for Search
+        // ==========================
+        public IActionResult Index(string? search, bool? isActive)
         {
-            return View(_service.GetAll());
-        }
+            List<Currency> currencies = _service.GetAll();
 
+            // Search
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                currencies = currencies
+                    .Where(c =>
+                        c.Code.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            // Status Filter
+            if (isActive.HasValue)
+            {
+                currencies = currencies
+                    .Where(c => c.IsActive == isActive.Value)
+                    .ToList();
+            }
+
+            ViewBag.Search = search;
+            ViewBag.IsActive = isActive;
+
+            return View(currencies);
+        }
         // ==========================
         // Create
         // ==========================
@@ -36,6 +65,17 @@ namespace CurrencyManagement.Controllers
         [HttpPost]
         public IActionResult Create(Currency currency)
         {
+            // แปลง Code เป็นตัวพิมพ์ใหญ่
+            currency.Code = currency.Code.Trim().ToUpper();
+
+            // ตรวจสอบ Code ซ้ำ
+            if (_service.GetAll().Any(c => c.Code == currency.Code))
+            {
+                ModelState.AddModelError(
+                    "Code",
+                    "Currency Code already exists.");
+            }
+
             if (!ModelState.IsValid)
                 return View(currency);
 
@@ -60,6 +100,22 @@ namespace CurrencyManagement.Controllers
         [HttpPost]
         public IActionResult Edit(Currency currency)
         {
+            // แปลง Code เป็นตัวพิมพ์ใหญ่
+            currency.Code = currency.Code.Trim().ToUpper();
+
+            // ตรวจสอบว่ามี Currency อื่นใช้ Code นี้หรือไม่
+            bool duplicate =
+                _service.GetAll().Any(c =>
+                    c.Id != currency.Id &&
+                    c.Code == currency.Code);
+
+            if (duplicate)
+            {
+                ModelState.AddModelError(
+                    "Code",
+                    "Currency Code already exists.");
+            }
+
             if (!ModelState.IsValid)
                 return View(currency);
 
@@ -91,42 +147,24 @@ namespace CurrencyManagement.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            //  ถ้าเป็น THB ไม่ต้องเรียก API
-            if (currency.Code.Trim().ToUpper() == "THB")
-            {
-                currency.PreviousRate = currency.CurrentRate;
-                currency.CurrentRate = 1.0m;
-                currency.ChangePercent = 0;
-                currency.LastUpdated = DateTime.Now;
-
-                TempData["Success"] = "THB updated.";
-
-                return RedirectToAction(nameof(Index));
-            }
-
             try
             {
-                FrankfurterResponse? result =
-                    await _fxRateService.GetRate(currency.Code);
+                FxRateResult? result =
+                    await _fxRateService.GetLatestAndPreviousRate(currency.Code);
 
-                if (result != null &&
-                    result.Rates.ContainsKey(currency.Code))
+                if (result == null)
                 {
-                    currency.PreviousRate = currency.CurrentRate;
-                    currency.CurrentRate = result.Rates[currency.Code];
-                    currency.LastUpdated = DateTime.Now;
-
-                    if (currency.PreviousRate > 0)
-                    {
-                        currency.ChangePercent =
-                            ((currency.CurrentRate - currency.PreviousRate)
-                            / currency.PreviousRate) * 100;
-                    }
+                    TempData["Error"] = "Cannot retrieve exchange rate.";
+                    return RedirectToAction(nameof(Index));
                 }
+
+                _service.UpdateRate(currency, result);
+
+                TempData["Success"] = "Exchange rate updated successfully.";
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                TempData["Error"] = ex.Message;
+                TempData["Error"] = "Cannot connect to Exchange Rate API.";
             }
 
             return RedirectToAction(nameof(Index));
@@ -137,81 +175,33 @@ namespace CurrencyManagement.Controllers
         // ==========================
         public async Task<IActionResult> RefreshAll()
         {
-            var currencies = _service.GetAll();
-
-            foreach (var currency in currencies)
+            foreach (Currency currency in _service.GetAll())
             {
-                if (currency.Code.Trim().ToUpper() == "THB")
-                {
-                    currency.PreviousRate = currency.CurrentRate;
-                    currency.CurrentRate = 1.0m;
-                    currency.ChangePercent = 0;
-                    currency.LastUpdated = DateTime.Now;
-                    continue;
-                }
                 try
                 {
-                    FrankfurterResponse? result =
-                         await _fxRateService.GetRate(currency.Code);
+                    FxRateResult? result =
+                        await _fxRateService.GetLatestAndPreviousRate(currency.Code);
 
                     if (result == null)
                         continue;
 
-                    if (!result.Rates.ContainsKey(currency.Code))
-                        continue;
-
-                    currency.PreviousRate = currency.CurrentRate;
-                    currency.CurrentRate = result.Rates[currency.Code];
-                    currency.LastUpdated = DateTime.Now;
-
-                    if (currency.PreviousRate > 0)
-                    {
-                        currency.ChangePercent =
-                            ((currency.CurrentRate - currency.PreviousRate)
-                            / currency.PreviousRate) * 100;
-                    }
+                    //currency.CurrentRate = result.CurrentRate;
+                    //currency.PreviousRate = result.PreviousRate;
+                    //currency.ChangePercent = result.ChangePercent;
+                    //currency.LastUpdated = result.RateDate;
+                    _service.UpdateRate(currency, result);
                 }
                 catch
                 {
-                    // ข้าม Currency ที่ Error
+                    // ข้ามสกุลเงินที่ Error
                 }
             }
 
-            TempData["Success"] = "All exchange rates updated.";
+            TempData["Success"] = "All exchange rates updated successfully.";
 
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> SeedCurrencies()
-        {
-            List<CurrencyApiModel> currencies =
-                await _fxRateService.GetCurrencies();
 
-            foreach (CurrencyApiModel item in currencies)
-            {
-                Currency? exist =
-                    _service.GetAll()
-                            .FirstOrDefault(x => x.Code == item.Code);
-
-                if (exist == null)
-                {
-                    _service.Add(new Currency
-                    {
-                        Code = item.Code,
-                        Name = item.Name,
-                        CurrentRate = 0,
-                        PreviousRate = 0,
-                        ChangePercent = 0,
-                        LastUpdated = DateTime.MinValue,
-                        IsActive = true
-                    });
-                }
-            }
-
-            TempData["Success"] =
-                "Currency master imported successfully.";
-
-            return RedirectToAction(nameof(Index));
-        }
     }
 }

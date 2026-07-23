@@ -3,7 +3,7 @@ using CurrencyManagement.Models;
 
 namespace CurrencyManagement.Services
 {
-    public class FxRateService
+    public class FxRateService : IFxRateService
     {
         private readonly HttpClient _httpClient;
 
@@ -92,6 +92,135 @@ namespace CurrencyManagement.Services
             }
 
             return result;
+        }
+        public async Task<FrankfurterResponse?> GetLatestRates()
+        {
+            string requestUrl =
+                "https://api.frankfurter.dev/v1/latest?base=THB";
+
+            HttpResponseMessage response =
+                await _httpClient.GetAsync(requestUrl);
+
+            response.EnsureSuccessStatusCode();
+
+            string json =
+                await response.Content.ReadAsStringAsync();
+
+            JsonSerializerOptions options =
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+            FrankfurterResponse? result =
+                JsonSerializer.Deserialize<FrankfurterResponse>(
+                    json,
+                    options);
+
+            return result;
+        }
+        public async Task<FrankfurterTimeSeriesResponse?> GetPreviousRate(
+    string currency)
+        {
+            DateTime endDate = DateTime.Today;
+
+            DateTime startDate = endDate.AddDays(-7);
+
+            string requestUrl =
+                $"https://api.frankfurter.dev/v1/{startDate:yyyy-MM-dd}..{endDate:yyyy-MM-dd}?base=THB&symbols={currency}";
+
+            HttpResponseMessage response =
+                await _httpClient.GetAsync(requestUrl);
+
+            response.EnsureSuccessStatusCode();
+
+            string json =
+                await response.Content.ReadAsStringAsync();
+
+            JsonSerializerOptions options =
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+            FrankfurterTimeSeriesResponse? result =
+                JsonSerializer.Deserialize<FrankfurterTimeSeriesResponse>(
+                    json,
+                    options);
+
+            return result;
+        }
+        public async Task<FxRateResult?> GetLatestAndPreviousRate(
+    string currency)
+        {
+            if (currency.Trim().ToUpper() == "THB")
+            {
+                return new FxRateResult
+                {
+                    CurrentRate = 1,
+                    PreviousRate = 1,
+                    ChangePercent = 0,
+                    RateDate = DateTime.Today
+                };
+            }
+
+            FrankfurterResponse? latest =
+                await GetRate(currency);
+
+            if (latest == null)
+                return null;
+
+            if (!latest.Rates.ContainsKey(currency))
+                return null;
+
+            decimal latestRate =
+                latest.Rates[currency];
+
+            FrankfurterTimeSeriesResponse? history =
+                await GetPreviousRate(currency);
+
+            decimal previousRate =
+                latestRate;
+
+            if (history != null)
+            {
+                List<string> dates =
+                    history.Rates.Keys
+                        .OrderByDescending(x => x)
+                        .ToList();
+
+                foreach (string date in dates)
+                {
+                    if (date == latest.Date)
+                        continue;
+
+                    if (history.Rates[date]
+                        .ContainsKey(currency))
+                    {
+                        previousRate =
+                            history.Rates[date][currency];
+
+                        break;
+                    }
+                }
+            }
+
+            decimal change = 0;
+
+            if (previousRate > 0)
+            {
+                change =
+                    ((latestRate - previousRate)
+                    / previousRate) * 100;
+            }
+
+            return new FxRateResult
+            {
+                CurrentRate = latestRate,
+                PreviousRate = previousRate,
+                ChangePercent = change,
+                RateDate = DateTime.Parse(latest.Date)
+            };
         }
     }
 }
