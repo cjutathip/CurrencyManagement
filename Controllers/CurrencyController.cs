@@ -193,7 +193,7 @@ namespace CurrencyManagement.Controllers
                 }
                 catch
                 {
-                    // ข้ามสกุลเงินที่ Error
+                    TempData["Error"] =   "Cannot connect to Exchange Rate API.";
                 }
             }
 
